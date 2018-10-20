@@ -8,7 +8,7 @@ from requests import get
 s = socket.socket()         # Create a socket object
 
 
-host = '10.0.0.172'
+host = '172.20.10.8'
 
 
 

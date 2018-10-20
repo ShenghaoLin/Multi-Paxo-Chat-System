@@ -1,5 +1,5 @@
 import socket               # Import socket module
-from requests import get
+
 
 s = socket.socket()         # Create a socket object
 host = ''
