@@ -6,17 +6,16 @@ from requests import get
 
 
 s = socket.socket()         # Create a socket object
-host = socket.gethostbyname(socket.gethostname()) # Get local machine name
 
 
-host = get('https://api.ipify.org').text
+host = '10.0.0.172'
 
 
 
 print(host)
 
 
-port = 12345                # Reserve a port for your service.
+port = 52345                # Reserve a port for your service.
 
 s.connect((host, port))
 while True:
