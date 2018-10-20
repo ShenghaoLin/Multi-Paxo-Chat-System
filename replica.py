@@ -70,7 +70,7 @@ class Replica:
 		self.socket.listen(5)
 		while True:
 			s, addr = self.socket.accept()
-			t = threading.Thread(target = self.receive, args = (s))
+			t = threading.Thread(target = self.receive, args = (s,))
 			t.start()
 			self.receive_list.append(t)
 
@@ -79,33 +79,42 @@ class Replica:
 			msg = complete_recv(s)
 			if msg != None:
 				if msg[0] == LEADER_APPROVE:
+					print("receive approve")
+
 					if (len(msg.split()) == 3):
 						if int(msg.split()[1]) > self.largest_pid_proposed:
 							self.largest_pid_proposed = int(msg.split()[1])
 							self.to_propose = msg.split()[2]
 
 					self.approve += 1
-					if self.approve > len(self.config) / 2:
+					print(self.approve)
+					if self.approve > len(self.config) / 2 and self.state == 1:
+						print("send propose")
 						self.state = 2
 						if self.to_propose == '':
 							self.to_propose = 'new'
-						for s in self.socket_list:
-							complete_send(s, PROPOSE + ' ' + str(self.id) + ' ' + self.to_propose)
+						for ss in self.socket_list:
+							complete_send(ss, PROPOSE + ' ' + str(self.id) + ' ' + self.to_propose)
 
 
 				elif msg[0] == LEADER_REQ:
+					print("receive request")
 					if int(msg[1:]) > self.current_leader:
 						k = int(msg[1:])
-						self.socket_list[k], LEADER_APPROVE + ' ' + str(self.current_leader) + ' ' + self.proposed_value
+						complete_send(self.socket_list[k], LEADER_APPROVE + ' ' + str(self.current_leader) + ' ' + self.proposed_value)
 						self.current_leader = k
 
 				elif msg[0] == PROPOSE:
+					print("receive propose")
+
 					p = msg.split()
+					print(p[1] + "  " + str(self.current_leader))
 					if int(p[1]) >= self.current_leader:
-						for s in self.socket_list:
-							complete_send(s, ACCEPT + p[2])
+						for ss in self.socket_list:
+							complete_send(ss, ACCEPT + p[2])
 
 				elif msg[0] == ACCEPT:
+					print("receive accept")
 					m = msg[1:]
 					if m in self.to_dicide:
 						self.to_dicide[m] += 1
@@ -119,6 +128,7 @@ class Replica:
 	def run(self):
 		if self.id == self.view and self.state == 0:
 			self.state = 1
+			print("send request")
 			for s in self.socket_list:
 				complete_send(s, LEADER_REQ + str(self.id))
 
