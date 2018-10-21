@@ -27,24 +27,29 @@ class client():
                         n = n +1
         
                 allmessage = open(self.message,'r')
+                m = "heyheyheyheyheyhey"
                 for m in allmessage:
 
-                        for i in range(self.view,n+self.view):
+                       #for i in range(self.view,n+self.view):
+                        while True:
                                 s = socket.socket()
-                                
-                                host = socket.gethostname()
+                                host = socket.gethostname()                             
+                #                host = socket.gethostname()
                                 port = 52345
-                                #host = hosts[i % n]
-                                #port = ports[i % n]
+                                #host = hosts[self.view]
+                                #port = ports[self.view]
+                                self.view = (self.view + 1) % n
 
                                 s.connect((host, port))
-                                s.sendto(m.encode(),(host,port))
+                                #s.sendto(m.encode(),(host,port))
                                 #s.sendto(m.encode(),(host, port))
-                                #s.send(m)
+                                s.send(m.encode())
                                 s.setblocking(0)
                                 #timeout 5 sec
                                 print('send message ')
                                 read, write, error = select.select([s], [], [], 10)
+                                if error:
+                                      print(error)
                                 if read:
                                         reply = s.recv(4096)
                                         print(reply)
