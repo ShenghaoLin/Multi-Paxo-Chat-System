@@ -8,14 +8,19 @@ PROPOSE = 'P'
 ACCEPT = 'A'
 SIZE_LEN = 10
 
-def complete_send(s, msg):
+def complete_send(s, server, msg):
+
 	msg = (('0' * SIZE_LEN + str(len(msg)))[-SIZE_LEN:] + str(msg)).encode()
 	bytes_sent = 0
-	while bytes_sent < len(msg) :
-		sent = s.send(msg[bytes_sent:])
-		if sent == 0:
-			break
-		bytes_sent += sent
+	try:
+		s.sendall(msg)
+	except:
+		if (len(server) != 0):
+			try:
+				s.connect(server)
+				s.sendall(msg)
+			except:
+				return
 
 def complete_recv(s):
 	size = ''
