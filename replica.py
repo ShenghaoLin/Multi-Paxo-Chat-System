@@ -151,7 +151,18 @@ class Replica:
 						if slot in self.proposed_pairs:
 							del(self.proposed_pairs[slot])
 			self.lock.release()
-			if len(self.decided) > 3:
+			if len(self.decided) > 10:
+				filename = "Replica" + str(self.id) + ".log"
+				d = list()
+				with open(filename, 'w') as f:
+					for slot in self.decide:
+						d.append((slot, self.decide[slot]))
+					d.sort(key = lambda x : x[0])
+					s = ''
+					for tt in d:
+						s += str(tt[0]) + ' ' + tt[1] + '\n'
+					f.write(s)
+				f.close()
 				break
 
 	def timeout_check(self):
@@ -162,6 +173,7 @@ class Replica:
 			self.lock.acquire()
 			if time.time() - self.time_stamp >= 3.0 and self.id != self.view:
 				self.view += 1
+				self.time_stamp = time.time()
 			self.lock.release()
 
 			if self.id == self.view and self.state == 0:
@@ -201,6 +213,8 @@ if __name__ == '__main__':
 		p = Process(target = k[i].start)
 		p.start()
 		pp.append(p)
-	# time.sleep(1.7)
-	# pp[0].terminate()
+	time.sleep(2)
+	pp[0].terminate()
+	time.sleep(2)
+	pp[1].terminate()
 	
