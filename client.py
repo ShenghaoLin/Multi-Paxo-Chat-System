@@ -1,27 +1,58 @@
 import socket               # Import socket module
 import select
 from requests import get
+import time
 
+class client():
 
+        def __init__(self, id, config, message):
+                self.id = id
+                self.config = config
+                self.message = message
+                self.view = 0
+                       
+        def run(self):
+                file = open(self.config,'r')
+                replicas=[]
+                ports=[]
+                hosts=[]
+                n=0
+                for line in file:
+                        #print(line)
+                        a = line.split()
+                        replicas.append(a[0])
+                        #print(replicas)
+                        ports.append(int(a[1]))
+                        hosts.append(a[2])
+                        n = n +1
+        
+                allmessage = open(self.message,'r')
+                for m in allmessage:
 
+                        for i in range(self.view,n+self.view):
+                                s = socket.socket()
+                                
+                                host = socket.gethostname()
+                                port = 52345
+                                #host = hosts[i % n]
+                                #port = ports[i % n]
 
-s = socket.socket()         # Create a socket object
+                                s.connect((host, port))
+                                s.sendto(m.encode(),(host,port))
+                                #s.sendto(m.encode(),(host, port))
+                                #s.send(m)
+                                s.setblocking(0)
+                                #timeout 5 sec
+                                print('send message ')
+                                read, write, error = select.select([s], [], [], 10)
+                                if read:
+                                        reply = s.recv(4096)
+                                        print(reply)
+                                        s.close()
+                                        break
 
-
-host = '10.0.0.172'
-
-
-
-print(host)
-
-
-port = 52345                # Reserve a port for your service.
-
-s.connect((host, port))
-while True:
-	read, write, error = select.select([s], [], [], 0)
-	if s in read:
-		a = s.recv(1024)
-		if len(a) > 0:
-			print(a)
-s.close()                     # Close the socket when done
+if __name__ == '__main__':
+        config = 'config.txt'
+        message = 'messages.txt'
+        c=client(1,config,message)
+        c.run()
