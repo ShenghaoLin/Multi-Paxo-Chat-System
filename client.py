@@ -27,7 +27,7 @@ class client():
                         n = n +1
         
                 allmessage = open(self.message,'r')
-                m = "heyheyheyheyheyhey"
+                #m = "heyheyheyheyheyhey"
                 for m in allmessage:
 
                        #for i in range(self.view,n+self.view):
@@ -52,7 +52,7 @@ class client():
                                       print(error)
                                 if read:
                                         reply = s.recv(4096)
-                                        print(reply)
+                                        print(reply.decode())
                                         s.close()
                                         break
 
