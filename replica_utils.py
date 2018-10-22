@@ -1,4 +1,5 @@
 import socket
+import random
 
 NOTIFICATION = 'N'
 LEADER_REQ = 'L'
@@ -11,7 +12,11 @@ SIZE_LEN = 8
 
 
 
-def complete_send(s, server, msg):
+def complete_send(s, server, msg, p = 0.0):
+
+	if p > 0:
+		if random.uniform(0, 1) < p:
+			return
 
 	msg = (('0' * SIZE_LEN + str(len(msg)))[-SIZE_LEN:] + str(msg)).encode()
 	bytes_sent = 0

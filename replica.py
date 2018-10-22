@@ -6,7 +6,7 @@ from replica_utils import *
 
 class Replica:
 	
-	def __init__(self, id, config):
+	def __init__(self, id, config, p = 0):
 		self.id = id
 		self.socket = socket.socket()
 		self.socket.bind(config[id])
@@ -26,6 +26,7 @@ class Replica:
 		self.msg_queue = list()
 		self.time_stamp = 0
 		self.last_decide_time = 0
+		self.p = p
 
 	def connect(self):
 		for server in self.config:
@@ -37,10 +38,7 @@ class Replica:
 
 	def notificate(self, s, server):
 		while True:
-			# print(str(self.id) + " sent nofification")
-			# self.lock.acquire()
-			complete_send(s, server, NOTIFICATION + str(self.id))
-			# self.lock.release()
+			complete_send(s, server, NOTIFICATION + str(self.id), p = self.p)
 			time.sleep(0.5)
 		
 	def new_connection(self):
@@ -110,7 +108,7 @@ class Replica:
 							to_send +=  ' ' + str(slot) + ' ' + \
 							str(self.proposed_pairs[slot][0]) + ' ' + self.proposed_pairs[slot][1]
 
-						complete_send(self.socket_list[k][0], self.socket_list[k][1], to_send)
+						complete_send(self.socket_list[k][0], self.socket_list[k][1], to_send, p = self.p)
 						self.current_leader = k
 						self.view = k
 					self.lock.release()
@@ -124,7 +122,7 @@ class Replica:
 						self.proposed_pairs[int(p[2])] = (int(p[1]), p[3])
 						for ss in self.socket_list:
 							self.lock.acquire()
-							complete_send(ss[0], ss[1], ACCEPT + ' ' + p[2] + ' ' + p[3])
+							complete_send(ss[0], ss[1], ACCEPT + ' ' + p[2] + ' ' + p[3], p = self.p)
 							self.lock.release()
 
 				elif msg[0] == ACCEPT:
@@ -166,7 +164,7 @@ class Replica:
 						if slot in self.proposed_pairs:
 							del(self.proposed_pairs[slot])
 					for ss in self.receive_list:
-						complete_send(ss[0], ss[1], REPLY + m)
+						complete_send(ss[0], ss[1], REPLY + m, p = self.p)
 					self.last_decide_time = time.time()
 					flag = True
 
@@ -212,7 +210,7 @@ class Replica:
 
 				for ss in self.socket_list:
 					self.lock.acquire()
-					complete_send(ss[0], ss[1], LEADER_REQ + str(self.id))
+					complete_send(ss[0], ss[1], LEADER_REQ + str(self.id), p = self.p)
 					self.lock.release()
 
 			if self.state == 2:
@@ -224,13 +222,13 @@ class Replica:
 				if i in self.to_propose:
 					print(str(self.id) + ' send propose ' + self.to_propose[i][1].replace('-+-', ' ').replace('~`', ' '))
 					for ss in self.socket_list:
-						complete_send(ss[0], ss[1], PROPOSE + ' ' + str(self.id) + ' ' + str(i) + ' ' + self.to_propose[i][1])
+						complete_send(ss[0], ss[1], PROPOSE + ' ' + str(self.id) + ' ' + str(i) + ' ' + self.to_propose[i][1], p = self.p)
 				else:
 					if len(self.msg_queue) > 0:
 						to_propose_s = self.msg_queue.pop(0)
 						print(str(self.id) + ' send propose ' + to_propose_s.replace('-+-', ' ').replace('~`', ' '))
 						for ss in self.socket_list:
-							complete_send(ss[0], ss[1], PROPOSE + ' ' + str(self.id) + ' ' + str(i) + ' ' + to_propose_s)
+							complete_send(ss[0], ss[1], PROPOSE + ' ' + str(self.id) + ' ' + str(i) + ' ' + to_propose_s, p = self.p)
 				self.lock.release()
 
 			time.sleep(0.2)

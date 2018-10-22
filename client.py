@@ -10,7 +10,8 @@ from multiprocessing import Process
 
 class client():
 
-	def __init__(self, name, config, message, mode):
+	def __init__(self, name, config, message, mode, p = 0):
+		self.p = p
 		self.name = name
 		self.config = config
 		self.message = message
@@ -101,11 +102,11 @@ class client():
 		while self.sending:
 			# print(self.view)
 			s = sockets[self.view]
-			complete_send(s[0], s[1], MESSAGE + self.name + '~`' + str(self.msg_sent) + '~`' + m.replace(' ', '-+-'))
+			complete_send(s[0], s[1], MESSAGE + self.name + '~`' + str(self.msg_sent) + '~`' + m.replace(' ', '-+-'), p = self.p)
 			for tt in range(20):
 				if self.sending == False:
 					break;
-				time.sleep(0.2)
+				time.sleep(0.05)
 
 			if self.sending:
 				self.view = (self.view + 1) % len(self.server_config)
