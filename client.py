@@ -26,7 +26,7 @@ class client():
 
 			msg = complete_recv(s)
 
-			if msg != None:
+			if msg != '':
 				# print("reply")
 				if msg[0] == REPLY:
 					m = msg[1:]
@@ -83,7 +83,10 @@ class client():
 					print(self.view)
 					if self.view == len(self.config):
 						self.view = 0
-		print("done")
+		print(self.name + " done")
+
+		while True:
+			continue
 
 if __name__ == '__main__':
 	config = 'servers.config'

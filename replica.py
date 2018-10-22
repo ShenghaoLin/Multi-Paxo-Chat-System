@@ -59,7 +59,7 @@ class Replica:
 			msg = complete_recv(s)
 			# self.lock.release()
 
-			if msg != None:
+			if msg != '':
 
 				if msg[0] == NOTIFICATION:
 					if int(msg[1:]) == self.view:
@@ -188,7 +188,7 @@ class Replica:
 			
 			time.sleep(0.1)
 
-			if time.time() - self.last_decide_time > 10:
+			if time.time() - self.last_decide_time > 20:
 				self.socket.close()
 				print('No new deciesions made recently, disconnect ' + str(self.id))
 				break

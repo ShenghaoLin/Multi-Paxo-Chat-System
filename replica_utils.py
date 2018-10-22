@@ -28,10 +28,13 @@ def complete_send(s, server, msg):
 def complete_recv(s):
 	size = ''
 	while len(size) < SIZE_LEN:
-		data = s.recv(SIZE_LEN - len(size)).decode()
-		if not data:
-			return None
-		size += data
+		try:
+			data = s.recv(SIZE_LEN - len(size)).decode()
+			if not data:
+				return ''
+			size += data
+		except:
+			return ''
 
 	size = int(size)
 
