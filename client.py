@@ -27,8 +27,7 @@ class client():
 			msg = complete_recv(s)
 
 			if msg != '':
-				# print("reply")
-				if msg[0] == REPLY:
+ 				if msg[0] == REPLY:
 					m = msg[1:]
 					hash_code = m.split('~`')[0] + '-' + m.split('~`')[1] 
 					
@@ -57,7 +56,10 @@ class client():
 		sockets = list()
 		for server in server_config:
 			s = socket.socket()
-			s.connect(server)
+			try:
+				s.connect(server)
+			except:
+				print("Not connected")
 			sockets.append((s, server))
 			t = threading.Thread(target = self.receive, args = (s, ))
 			t.start()
@@ -80,10 +82,7 @@ class client():
 					time.sleep(0.2)
 
 				if self.sending:
-					self.view += 1
-					print(self.view)
-					if self.view == len(self.config):
-						self.view = 0
+					self.view = (self.view + 1) % len(server_config)
 		print(self.name + " done")
 
 		while True:
