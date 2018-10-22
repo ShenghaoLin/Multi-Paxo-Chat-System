@@ -1,0 +1,5 @@
+One,two,I'm tying my shoe.Three,four,he's closing the door.
+Five,six,she's picking up sticks. Seven,eight,they're painting the gate.
+Nine,ten,they're catching a hen.Eleven,twelve,he has books to shelve.
+Thirteen,fourteen,boys are talking.Fifteen,sixteen,girls are singing.
+Seventeen,eighteen,they are skating.Nineteen,twenty,my plate's empty!
