@@ -1,12 +1,15 @@
 import socket
 
-
 NOTIFICATION = 'N'
 LEADER_REQ = 'L'
 LEADER_APPROVE = 'D'
 PROPOSE = 'P'
 ACCEPT = 'A'
-SIZE_LEN = 10
+MESSAGE = 'M'
+REPLY = 'R'
+SIZE_LEN = 8
+
+
 
 def complete_send(s, server, msg):
 
@@ -34,9 +37,26 @@ def complete_recv(s):
 
 	msg = ''
 	while len(msg) < size:
-		data = s.recv(size - len(msg)).decode()
-		if not data:
-			break
-		msg += data
+		try:
+			data = s.recv(size - len(msg)).decode()
+			if not data:
+				break
+			msg += data
+		except:
+			return ''
 
 	return msg
+
+def get_config(s):
+	config = list()
+	with open(s, 'r') as f:
+		content = f.readlines()
+		for line in content:
+			config.append((line.split()[1], int(line.split()[2])))
+	f.close()
+	return config
+
+
+def kill_all(processes):
+	for p in processes:
+		p.terminate()

@@ -1,64 +1,106 @@
-import socket               # Import socket module
+import socket	   # Import socket module
 import select
 from requests import get
-
+from replica_utils import *
+import threading
 import time
+from multiprocessing import Process
+
 
 class client():
 
-        def __init__(self, id, config, message):
-                self.id = id
-                self.config = config
-                self.message = message
-                self.view = 0
-                       
-        def run(self):
-                file = open(self.config,'r')
-                replicas=[]
-                ports=[]
-                hosts=[]
-                n=0
-                for line in file:
-                        #print(line)
-                        a = line.split()
-                        replicas.append(a[0])
-                        #print(replicas)
-                        ports.append(int(a[1]))
-                        hosts.append(a[2])
-                        n = n +1
-        
-                allmessage = open(self.message,'r')
-                #m = "heyheyheyheyheyhey"
-                for m in allmessage:
+	def __init__(self, name, config, message, mode):
+		self.name = name
+		self.config = config
+		self.message = message
+		self.view = 0
+		self.mode = mode
+		self.chat_hist_code = list()
+		self.chat_history = ''
+		self.lock = threading.Lock()
+		self.sending = False
 
-                       #for i in range(self.view,n+self.view):
-                        while True:
-                                s = socket.socket()
-                                host = socket.gethostname()                             
-                #                host = socket.gethostname()
-                                port = 52345
-                                #host = hosts[self.view]
-                                #port = ports[self.view]
-                                self.view = (self.view + 1) % n
 
-                                s.connect((host, port))
-                                #s.sendto(m.encode(),(host,port))
-                                #s.sendto(m.encode(),(host, port))
-                                s.send(m.encode())
-                                s.setblocking(0)
-                                #timeout 5 sec
-                                print('send message ')
-                                read, write, error = select.select([s], [], [], 10)
-                                if error:
-                                      print(error)
-                                if read:
-                                        reply = s.recv(4096)
-                                        print(reply.decode())
-                                        s.close()
-                                        break
+	def receive(self, s):
+		while True:
+
+			msg = complete_recv(s)
+
+			if msg != None:
+				# print("reply")
+				if msg[0] == REPLY:
+					m = msg[1:]
+					hash_code = m.split('~`')[0] + '-' + m.split('~`')[1] 
+					
+
+					self.lock.acquire()
+					if hash_code not in self.chat_hist_code:
+						real_msg = m.split('~`')[2].replace('-+-', ' ')
+						self.chat_hist_code.append(hash_code)
+						self.chat_history += (hash_code + ': ' + real_msg + '\n')
+						# if m.split('~`')[0] == self.name:
+						# 	print(real_msg)
+						# else:
+						# 	print(m.split('~`')[0] + ': ' + real_msg)
+						if m.split('~`')[0] == self.name:
+							self.sending = False
+
+						with open('chat_history' + self.name + '.log', 'w') as f:
+							f.write(self.chat_history)
+						f.close()
+					self.lock.release()
+
+
+	def run(self):
+
+		server_config = get_config(self.config)
+		sockets = list()
+		for server in server_config:
+			s = socket.socket()
+			s.connect(server)
+			sockets.append((s, server))
+			t = threading.Thread(target = self.receive, args = (s, ))
+			t.start()
+
+		with open(self.message, 'r') as f:
+			msgs = f.readlines()
+
+
+		for i in range(len(msgs)):
+
+			self.sending = True
+
+			while self.sending:
+				s = sockets[self.view]
+				complete_send(s[0], s[1], MESSAGE + self.name + '~`' + str(i) + '~`' + msgs[i].replace(' ', '-+-'))
+				for tt in range(20):
+					if self.sending == False:
+						break;
+					time.sleep(0.2)
+
+				if self.sending:
+					self.view += 1
+					print(self.view)
+					if self.view == len(self.config):
+						self.view = 0
+		print("done")
 
 if __name__ == '__main__':
-        config = 'config.txt'
-        message = 'messages.txt'
-        c=client(1,config,message)
-        c.run()
+	config = 'servers.config'
+	message = 'messages.txt'
+
+	clients = list()
+	processes = list()
+	
+	for i in range(3):
+		c = client(str(i), config, message, 0)
+		clients.append(c)
+
+
+	for c in clients:
+		p = Process(target = c.run)
+		p.start()
+		processes.append(p)
+
+	t = threading.Timer(30.0, kill_all, args = (processes,))
+	t.start()
