@@ -3,6 +3,7 @@ import select
 from requests import get
 from replica_utils import *
 import threading
+import sys
 import time
 from multiprocessing import Process
 
@@ -19,6 +20,9 @@ class client():
 		self.chat_history = ''
 		self.lock = threading.Lock()
 		self.sending = False
+		self.server_config = get_config(config)
+		self.console_input = list()
+		self.msg_sent = 0
 
 
 	def receive(self, s):
@@ -27,34 +31,31 @@ class client():
 			msg = complete_recv(s)
 
 			if msg != '':
- 				if msg[0] == REPLY:
+				if msg[0] == REPLY:
 					m = msg[1:]
 					hash_code = m.split('~`')[0] + '-' + m.split('~`')[1] 
-					
 
 					self.lock.acquire()
 					if hash_code not in self.chat_hist_code:
 						real_msg = m.split('~`')[2].replace('-+-', ' ')
 						self.chat_hist_code.append(hash_code)
 						self.chat_history += (hash_code + ': ' + real_msg + '\n')
-						# if m.split('~`')[0] == self.name:
-						#       print(real_msg)
-						# else:
-						#       print(m.split('~`')[0] + ': ' + real_msg)
+						
 						if m.split('~`')[0] == self.name:
 							self.sending = False
+
+						if self.mode == 1:
+							if m.split('~`')[0] != self.name:
+								print(m.split('~`')[0] + ': ' + real_msg)
 
 						with open('chat_history' + self.name + '.log', 'w') as f:
 							f.write(self.chat_history)
 						f.close()
 					self.lock.release()
 
-
 	def run(self):
-
-		server_config = get_config(self.config)
 		sockets = list()
-		for server in server_config:
+		for server in self.server_config:
 			s = socket.socket()
 			try:
 				s.connect(server)
@@ -64,46 +65,57 @@ class client():
 			t = threading.Thread(target = self.receive, args = (s, ))
 			t.start()
 
+		if self.mode == 0:
+			self.run_batch_mode(sockets)
+		else:
+			self.run_cmdl_mode(sockets)
+
+
+	def run_cmdl_mode(self, sockets):
+		reading_thread = threading.Thread(target = self.read_input)
+		reading_thread.daemon = True
+		reading_thread.start()
+		while True:
+			if len(self.console_input) > 0:
+				self.send_msg(self.console_input.pop(0), sockets)
+
+	def read_input(self):
+		while True:
+			text = sys.stdin.readline()[:-1]
+			self.console_input.append(text)
+
+	def run_batch_mode(self, sockets):
+
 		with open(self.message, 'r') as f:
 			msgs = f.readlines()
 
-
 		for i in range(len(msgs)):
+			self.send_msg(msgs[i], sockets)
 
-			self.sending = True
-
-			while self.sending:
-				print(self.view)
-				s = sockets[self.view]
-				complete_send(s[0], s[1], MESSAGE + self.name + '~`' + str(i) + '~`' + msgs[i].replace(' ', '-+-'))
-				for tt in range(20):
-					if self.sending == False:
-						break;
-					time.sleep(0.2)
-
-				if self.sending:
-					self.view = (self.view + 1) % len(server_config)
 		print(self.name + " done")
-
 		while True:
 			continue
 
+	def send_msg(self, m, sockets):
+		self.sending = True
+		while self.sending:
+			# print(self.view)
+			s = sockets[self.view]
+			complete_send(s[0], s[1], MESSAGE + self.name + '~`' + str(self.msg_sent) + '~`' + m.replace(' ', '-+-'))
+			for tt in range(20):
+				if self.sending == False:
+					break;
+				time.sleep(0.2)
+
+			if self.sending:
+				self.view = (self.view + 1) % len(self.server_config)
+		self.msg_sent += 1
+
 if __name__ == '__main__':
 	config = 'servers.config'
-	message = ['messages.txt','messages2.txt','messages3.txt']
-
-	clients = list()
-	processes = list()
 	
-	for i in range(3):
-		c = client(str(i), config, message[i], 0)
-		clients.append(c)
+	c = client(sys.argv[1], config, '', 1)
+	c.run()
 
-
-	for c in clients:
-		p = Process(target = c.run)
-		p.start()
-		processes.append(p)
-
-	t = threading.Timer(30.0, kill_all, args = (processes,))
-	t.start()
+	# t = threading.Timer(30.0, kill_all, args = (processes,))
+	# t.start()

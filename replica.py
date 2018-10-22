@@ -188,7 +188,7 @@ class Replica:
 			
 			time.sleep(0.1)
 
-			if time.time() - self.last_decide_time > 20:
+			if time.time() - self.last_decide_time > 30:
 				self.socket.close()
 				print('No new deciesions made recently, disconnect ' + str(self.id))
 				break
@@ -248,10 +248,10 @@ if __name__ == '__main__':
 		p.start()
 		processes.append(p)
 
-	time.sleep(2)
-	processes[0].terminate()
-	time.sleep(2)
-	processes[1].terminate()
+	# time.sleep(2)
+	# processes[0].terminate()
+	# time.sleep(2)
+	# processes[1].terminate()
 
-	t = threading.Timer(30.0, kill_all, args = (processes,))
+	t = threading.Timer(120.0, kill_all, args = (processes,))
 	t.start()
