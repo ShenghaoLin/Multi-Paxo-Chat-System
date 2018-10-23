@@ -34,6 +34,9 @@ class client():
 			if msg != '':
 				if msg[0] == REPLY:
 					m = msg[1:]
+					if m == '[[NULL[[':
+						continue
+
 					hash_code = m.split('~`')[0] + '-' + m.split('~`')[1] 
 
 					self.lock.acquire()
@@ -103,9 +106,11 @@ class client():
 			# print(self.view)
 			s = sockets[self.view]
 			complete_send(s[0], s[1], MESSAGE + self.name + '~`' + str(self.msg_sent) + '~`' + m.replace(' ', '-+-'), p = self.p)
-			for tt in range(20):
+			for tt in range(10):
+
 				if self.sending == False:
 					break;
+				complete_send(s[0], s[1], MESSAGE + self.name + '~`' + str(self.msg_sent) + '~`' + m.replace(' ', '-+-'), p = self.p)
 				time.sleep(0.05)
 
 			if self.sending:
@@ -117,6 +122,3 @@ if __name__ == '__main__':
 	
 	c = client(sys.argv[1], config, '', 1)
 	c.run()
-
-	# t = threading.Timer(30.0, kill_all, args = (processes,))
-	# t.start()
