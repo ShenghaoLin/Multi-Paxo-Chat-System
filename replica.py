@@ -5,8 +5,6 @@ import sys
 from multiprocessing import Process
 from replica_utils import *
 
-def hash_it(s):
-	return int(s.split('~`')[0]) * 2000 + int(s.split('~`')[1])
 
 class Replica:
 	
@@ -33,6 +31,7 @@ class Replica:
 		self.p = p
 		self.to_execute = 0
 		self.slot_to_propose = 0
+
 		filename = "Replica" + str(self.id) + ".log"
 		with open(filename, 'w') as f:
 			f.write('')
@@ -78,8 +77,9 @@ class Replica:
 
 				elif msg[0] == MESSAGE:
 					m = msg[1:]
-					if (m not in self.received) and (m not in self.msg_proposed):
-						hash_code = hash_it(m)
+					hash_code = hash_it(m)
+					if (hash_code not in self.received) and (hash_code not in self.msg_proposed):
+						
 						self.msg_queue.append(m)
 						self.received.add(hash_code)
 

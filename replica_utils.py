@@ -68,3 +68,6 @@ def get_config(s):
 def kill_all(processes):
 	for p in processes:
 		p.terminate()
+
+def hash_it(s):
+	return int(s.split('~`')[0]) * 2000 + int(s.split('~`')[1])

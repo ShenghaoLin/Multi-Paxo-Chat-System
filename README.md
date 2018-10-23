@@ -1,5 +1,9 @@
 # Multi-Paxo-Chat-System
 
+TODO: Run replicas seperately; Create functions to control terminating replicas; Create Skipped slot error trigger.
+
+Update: Skipped slot recovery supported
+
 Update: Message loss supported (not tested)
 
 Update: Command line chatting mode supported. Batch mode is moved to a single file called client_batch.py. To run client.py, use "python client.py #clientname".
