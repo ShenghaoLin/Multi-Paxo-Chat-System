@@ -4,8 +4,6 @@ import threading
 import sys
 from multiprocessing import Process
 from replica_utils import *
-import os
-import signal
 
 class Replica:
 	
@@ -97,9 +95,6 @@ class Replica:
 
 	def receive(self, s):
 		while True:
-
-			if self.suicide:
-				sys.exit()
 
 			# self.lock.acquire()
 			msg = complete_recv(s)
@@ -218,15 +213,14 @@ class Replica:
 
 	def read_input(self):
 		while True:
-			if self.suicide:
-				sys.exit()
-			text = sys.stdin.readline()[:-1]
-			if text == 'Kill me':
+			
+			text = sys.stdin.readline()[:-1].lower()
+			if text == 'kill me':
 				self.suicide = True
-			if text == "Skip slot":
+			if text == "skip slot":
 				print("Going to skip the next slot")
 				self.skip_slot = True
-			if text == "Start":
+			if text == "start":
 				self.ready_to_connect = True
 
 
@@ -240,9 +234,9 @@ class Replica:
 			t.start()
 
 		if self.mode != 0:
-			print('Use "Start" to start running, after you open all replicas')
-			print('Use "Kill me" to kill this process.')
-			print('Use "Skip slot" to skip a slot.')
+			print('Use "start" to start running, after you open all replicas')
+			print('Use "kill me" to kill this process.')
+			print('Use "skip slot" to skip a slot.')
 			reading_thread = threading.Thread(target = self.read_input)
 			reading_thread.daemon = True
 			reading_thread.start()
@@ -289,8 +283,9 @@ class Replica:
 				self.last_decide_time = time.time()
 
 				if slot == self.suicide_after:
-					print("I skipped a slot, so I have to go.")
-					self.suicide = True
+					print("I skipped a slot, so I have to go some time.")
+					# self.suicide = True
+					self.suicide_after = -1
 				
 				break
 

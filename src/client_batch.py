@@ -9,7 +9,7 @@ if __name__ == '__main__':
 	processes = list()
 	
 	for i in range(3):
-		c = client(str(i), config, data_path + message[i], 0)
+		c = client(str(i), config, data_path + message[i], 0, p = 0)
 		clients.append(c)
 
 
@@ -18,5 +18,5 @@ if __name__ == '__main__':
 		p.start()
 		processes.append(p)
 
-	t = threading.Timer(30.0, kill_all, args = (processes,))
-	t.start()
+	# t = threading.Timer(30.0, kill_all, args = (processes,))
+	# t.start()

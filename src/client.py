@@ -1,4 +1,4 @@
-import socket      # Import socket module
+import socket      
 import select
 from requests import get
 from replica_utils import *
@@ -52,7 +52,7 @@ class client():
 							if m.split('~`')[0] != self.name:
 								print(m.split('~`')[0] + ': ' + real_msg)
 
-						with open('../data/chat_history' + self.name + '.log', 'w') as f:
+						with open('../log/chat_history' + self.name + '.log', 'w') as f:
 							f.write(self.chat_history)
 						f.close()
 					self.lock.release()
@@ -67,6 +67,7 @@ class client():
 				print("Not connected")
 			sockets.append((s, server))
 			t = threading.Thread(target = self.receive, args = (s, ))
+			t.daemon = True
 			t.start()
 
 		if self.mode == 0:

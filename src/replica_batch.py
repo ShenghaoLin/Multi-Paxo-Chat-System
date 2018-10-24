@@ -6,7 +6,7 @@ if __name__ == '__main__':
 	processes = list()
 
 	for i in range(len(config)):
-		replicas.append(Replica(i, config, 0))
+		replicas.append(Replica(i, config, 0, p = 0))
 
 	for i in range(len(config)):
 		p = Process(target = replicas[i].start)
@@ -18,5 +18,12 @@ if __name__ == '__main__':
 	# time.sleep(2)
 	# processes[1].terminate()
 
-	t = threading.Timer(120.0, kill_all, args = (processes,))
-	t.start()
+	time.sleep(4)
+	processes[0].terminate()
+	time.sleep(2)
+	processes[1].terminate()
+	time.sleep(2)
+	processes[2].terminate()
+
+	# t = threading.Timer(120.0, kill_all, args = (processes,))
+	# t.start()
