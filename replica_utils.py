@@ -8,6 +8,7 @@ PROPOSE = 'P'
 ACCEPT = 'A'
 MESSAGE = 'M'
 REPLY = 'R'
+NULL_ACTION = '\{NULL\}'
 SIZE_LEN = 8
 
 
@@ -25,8 +26,10 @@ def complete_send(s, server, msg, p = 0.0):
 	except:
 		if (len(server) != 0):
 			try:
+				# print("try to reconnect to " + str(server))
 				s.connect(server)
 				s.sendall(msg)
+				print(msg)
 			except:
 				return
 

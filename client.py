@@ -34,7 +34,7 @@ class client():
 			if msg != '':
 				if msg[0] == REPLY:
 					m = msg[1:]
-					if m == '[[NULL[[':
+					if m == NULL_ACTION:
 						continue
 
 					hash_code = m.split('~`')[0] + '-' + m.split('~`')[1] 

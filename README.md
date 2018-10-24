@@ -1,5 +1,22 @@
 # Multi-Paxo-Chat-System
 
+# How to Use
+
+Run replica seperately: python replica.py $replica_id
+And then there are 3 commands you can use: "Start", "Kill me" and "Skip slot".
+(Plese only use Start command after start all the replicas!)
+
+Run replica in batch mode: python replica_batch.py
+
+Run client seperately: python client.py $client_name
+(clients should have different names)
+
+Run client in batch mode: python client_batch.py
+
+# Update Log
+
+Update: Replica can run seperately, during which time termination and skipping slots work. It seems to the only thing left is to test the performance in message loss mode.
+
 TODO: Run replicas seperately; Create functions to control terminating replicas; Create Skipped slot error trigger.
 
 Update: Skipped slot recovery supported

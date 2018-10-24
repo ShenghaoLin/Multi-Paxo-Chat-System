@@ -4,11 +4,13 @@ import threading
 import sys
 from multiprocessing import Process
 from replica_utils import *
-
+import os
+import signal
 
 class Replica:
 	
-	def __init__(self, id, config, p = 0):
+	def __init__(self, id, config, mode, p = 0):
+		self.mode = mode
 		self.id = id
 		self.socket = socket.socket()
 		self.socket.bind(config[id])
@@ -31,6 +33,24 @@ class Replica:
 		self.p = p
 		self.to_execute = 0
 		self.slot_to_propose = 0
+		self.ready_to_connect = False
+		self.console_input = list()
+		self.skip_slot = False
+		self.send_request = 0
+		self.met = set()
+		self.suicide_after = -1
+		self.suicide = False
+
+		for server in self.config:
+			s = socket.socket()
+			s.settimeout(1)
+			self.socket_list.append((s, server))
+
+		if self.mode == 1:
+			self.socket.listen()
+			t = threading.Thread(target = self.new_connection)
+			t.daemon = True
+			t.start()
 
 		filename = "Replica" + str(self.id) + ".log"
 		with open(filename, 'w') as f:
@@ -41,22 +61,35 @@ class Replica:
 		self.received = set()
 
 	def connect(self):
-		for server in self.config:
-			s = socket.socket()
-			s.connect(server)
+		# print("start to connect")
+		for s, server in self.socket_list:
+			try:
+				s.connect(server)
+			except:
+				print(str(self.id) + " already connected with " + str(server))
 			t = threading.Thread(target = self.notificate, args = (s, server,))
+			t.daemon = True
 			t.start()
-			self.socket_list.append((s, server))
+		# print("connect finish")
+
 
 	def notificate(self, s, server):
 		while True:
+
+			if self.suicide:
+				return
+
 			complete_send(s, server, NOTIFICATION + str(self.id), p = self.p)
 			time.sleep(0.5)
 		
 	def new_connection(self):
-		self.socket.listen()
 		while True:
+
+			if self.suicide:
+				return
+			
 			s, addr = self.socket.accept()
+			print(str(self.id) + " has a new connection " + str(addr))
 			t = threading.Thread(target = self.receive, args = (s,))
 			t.start()
 			self.receive_list.append((s, addr))
@@ -64,6 +97,9 @@ class Replica:
 
 	def receive(self, s):
 		while True:
+
+			if self.suicide:
+				sys.exit()
 
 			# self.lock.acquire()
 			msg = complete_recv(s)
@@ -74,6 +110,14 @@ class Replica:
 				if msg[0] == NOTIFICATION:
 					if int(msg[1:]) == self.view:
 						self.time_stamp = time.time()
+						if int(msg[1:]) not in self.met:
+							# print("receive from " + msg[1:])
+							try:
+								self.socket_list[int(msg[1:])][0].connect(self.socket_list[int(msg[1:])][1])
+							except:
+								print(str(self.id) + " already connected with " + msg[1:])
+						self.met.add(int(msg[1:]))
+
 
 				elif msg[0] == MESSAGE:
 					m = msg[1:]
@@ -113,18 +157,21 @@ class Replica:
 
 
 				elif msg[0] == LEADER_REQ:
-					print(str(self.id) + " receive request")
+					print(str(self.id) + " receive request from " + msg[1:])
 					self.lock.acquire()
 
 					if int(msg[1:]) > self.current_leader:
 						k = int(msg[1:])
 						to_send = LEADER_APPROVE
+						if self.state == 2:
+							self.state = 0
 
 						for slot in self.proposed_pairs:
 							to_send +=  ' ' + str(slot) + ' ' + \
 							str(self.proposed_pairs[slot][0]) + ' ' + self.proposed_pairs[slot][1]
 
 						complete_send(self.socket_list[k][0], self.socket_list[k][1], to_send, p = self.p)
+						print('Approve sent')
 
 						self.current_leader = k
 						self.view = k
@@ -136,8 +183,10 @@ class Replica:
 					p = msg.split()
 
 					if int(p[1]) >= self.current_leader:
+						if self.state == 2 and int(p[1]) > self.id:
+							self.state = 0
 						self.proposed_pairs[int(p[2])] = (int(p[1]), p[3])
-						if (p[3] != '[[NULL[['):
+						if (p[3] != NULL_ACTION):
 							hash_code = hash_it(p[3])
 							self.received.add(hash_code)
 							self.msg_proposed.add(hash_code)
@@ -150,11 +199,8 @@ class Replica:
 
 				elif msg[0] == ACCEPT:
 					m = msg.split()
-					if (m[2] != '[[NULL[['):
+					if (m[2] != NULL_ACTION):
 						self.msg_proposed.add(hash_it(m[2]))
-
-					if (self.id == 1):
-						print('111111 received ' + m[2])
 
 					self.lock.acquire()
 
@@ -170,29 +216,66 @@ class Replica:
 
 					self.lock.release()
 
+	def read_input(self):
+		while True:
+			if self.suicide:
+				sys.exit()
+			text = sys.stdin.readline()[:-1]
+			if text == 'Kill me':
+				self.suicide = True
+			if text == "Skip slot":
+				print("Going to skip the next slot")
+				self.skip_slot = True
+			if text == "Start":
+				self.ready_to_connect = True
+
+
 	def start(self):
-		t = threading.Thread(target = self.new_connection)
-		t.start()
 		self.last_decide_time = time.time()
+
+		if self.mode == 0:
+			self.socket.listen()
+			t = threading.Thread(target = self.new_connection)
+			t.daemon = True
+			t.start()
+
+		if self.mode != 0:
+			print('Use "Start" to start running, after you open all replicas')
+			print('Use "Kill me" to kill this process.')
+			print('Use "Skip slot" to skip a slot.')
+			reading_thread = threading.Thread(target = self.read_input)
+			reading_thread.daemon = True
+			reading_thread.start()
+		else:
+			self.ready_to_connect = True
+
+		while not self.ready_to_connect:
+			continue
+
+		self.connect()
 		self.run()
 
 	def run(self):
-		self.connect()
+		
 		self.time_stamp = time.time()
 		t = threading.Thread(target = self.timeout_check)
+		t.daemon = True
 		t.start()
 		while True:
-			flag = False
+			if self.suicide:
+				print("killed")
+				sys.exit()
 			
 			self.check_decision()
 			self.execute()
 			
 			time.sleep(0.1)
 
-			if time.time() - self.last_decide_time > 30:
-				self.socket.close()
-				print('No new deciesions made recently, disconnect ' + str(self.id))
-				break
+			# if time.time() - self.last_decide_time > 30:
+			# 	self.socket.close()
+			# 	print('No new deciesions made recently, disconnect ' + str(self.id))
+			# 	break
+		# os.kill(os.getpid(), signal.SIGINT)
 
 	def check_decision(self):
 		for slot in self.to_dicide:
@@ -204,10 +287,11 @@ class Replica:
 					if slot in self.proposed_pairs:
 						del(self.proposed_pairs[slot])
 				self.last_decide_time = time.time()
+
+				if slot == self.suicide_after:
+					print("I skipped a slot, so I have to go.")
+					self.suicide = True
 				
-				# if slot == 2 and self.id == 0:
-				# 	print('fuuuuuu')
-				# 	sys.exit()
 				break
 
 	def execute(self):
@@ -225,6 +309,9 @@ class Replica:
 			
 	def timeout_check(self):
 		while True:
+			if self.suicide:
+				return
+
 			self.lock.acquire()
 			if time.time() - self.time_stamp >= 1.5 and self.id != self.view:
 				self.view += 1
@@ -233,6 +320,17 @@ class Replica:
 
 			if self.id == self.view and self.state == 0:
 				self.state = 1
+				self.send_request = time.time()
+				print(str(self.id) + " send request")
+
+				for ss in self.socket_list:
+					self.lock.acquire()
+					complete_send(ss[0], ss[1], LEADER_REQ + str(self.id), p = self.p)
+					self.lock.release()
+
+			if self.state == 1 and time.time() - self.send_request> 5:
+
+				self.send_request = time.time()
 				print(str(self.id) + " send request")
 
 				for ss in self.socket_list:
@@ -244,8 +342,10 @@ class Replica:
 				while self.slot_to_propose in self.decided:
 					self.slot_to_propose += 1
 
-				# if self.slot_to_propose == 1 and self.id == 0:
-				# 	self.slot_to_propose += 1
+				if self.skip_slot:
+					self.slot_to_propose += 1
+					self.suicide_after = self.slot_to_propose
+					self.skip_slot = False
 
 				if self.slot_to_propose in self.to_propose:
 					print(str(self.id) + ' send propose by prev ' + self.to_propose[i][1].replace('-+-', ' ').replace('~`', ' '))
@@ -255,9 +355,9 @@ class Replica:
 
 					if (len(self.to_propose) > 0 and self.slot_to_propose < max([x for x in self.to_propose])) \
 					or (len(self.decided) > 0 and self.slot_to_propose < max(self.decided)):
-						print(str(self.id) + ' send propose ' + '[[NULL[[')
+						print(str(self.id) + ' send propose ' + NULL_ACTION)
 						for ss in self.socket_list:
-							complete_send(ss[0], ss[1], PROPOSE + ' ' + str(self.id) + ' ' + str(self.slot_to_propose) + ' ' + '[[NULL[[', p = self.p)
+							complete_send(ss[0], ss[1], PROPOSE + ' ' + str(self.id) + ' ' + str(self.slot_to_propose) + ' ' + NULL_ACTION, p = self.p)
 				
 					elif len(self.msg_queue) > 0:
 						
@@ -278,21 +378,6 @@ class Replica:
 
 if __name__ == '__main__':
 	config = get_config('servers.config')
-	replicas = list()
-	processes = list()
+	r = Replica(int(sys.argv[1]), config, 1)
+	r.start()
 
-	for i in range(len(config)):
-		replicas.append(Replica(i, config))
-
-	for i in range(len(config)):
-		p = Process(target = replicas[i].start)
-		p.start()
-		processes.append(p)
-
-	# time.sleep(2)
-	# processes[0].terminate()
-	# time.sleep(2)
-	# processes[1].terminate()
-
-	t = threading.Timer(120.0, kill_all, args = (processes,))
-	t.start()
