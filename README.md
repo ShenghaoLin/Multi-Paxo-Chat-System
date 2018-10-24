@@ -7,12 +7,22 @@ Run client in batch mode: python client_batch.py
 Run replica in batch mode: python replica_batch.py
 
 # Run test case 2: primary dies
-Run replicas separately first
-
+Run 2f+1 replicas separately first: python replica.py $replica_id , where $replica_id is integers for processor ids.
+Run client separately: python client.py $client_name,  where $replica_id is integers for client names.
+For replica 0, run command "Kill me"
+See log files for results.
 
 # Run test case 3: primary dies, view change
+Run 2f+1 replicas separately first: python replica.py $replica_id , where $replica_id is integers for processor ids.
+Run client separately: python client.py $client_name,  where $replica_id is integers for client names.
+For f numbers of relicas, run command "Kill me"
+See log files for results.
 
 # Run test case 4: Skipped slot
+Run 2f+1 replicas separately first: python replica.py $replica_id , where $replica_id is integers for processor ids.
+Run client separately: python client.py $client_name,  where $replica_id is integers for client names.
+In the primary replica's command window, type "Skip slot" command
+See log files for results.
 
 # Run test case 5: Message loss
 Change parameter p in function 'complete_send', in replica_utils.py, to set message loss rate.
