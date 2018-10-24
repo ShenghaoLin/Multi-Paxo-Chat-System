@@ -2,6 +2,26 @@
 
 # How to Use
 
+# Run test case 1: batch mode
+Run client in batch mode: python client_batch.py
+Run replica in batch mode: python replica_batch.py
+
+# Run test case 2: primary dies
+Run replicas separately first
+
+
+# Run test case 3: primary dies, view change
+
+# Run test case 4: Skipped slot
+
+# Run test case 5: Message loss
+Change parameter p in function 'complete_send', in replica_utils.py, to set message loss rate.
+Then,
+Run client in batch mode: python client_batch.py
+Run replica in batch mode: python replica_batch.py
+The consensus system is alive when p is small, for example, p = 0.01
+################################################################################
+
 Run replica seperately: python replica.py $replica_id
 And then there are 3 commands you can use: "Start", "Kill me" and "Skip slot".
 (Plese only use Start command after start all the replicas!)
