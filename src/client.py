@@ -52,7 +52,7 @@ class client():
 							if m.split('~`')[0] != self.name:
 								print(m.split('~`')[0] + ': ' + real_msg)
 
-						with open('chat_history' + self.name + '.log', 'w') as f:
+						with open('../data/chat_history' + self.name + '.log', 'w') as f:
 							f.write(self.chat_history)
 						f.close()
 					self.lock.release()
@@ -118,7 +118,7 @@ class client():
 		self.msg_sent += 1
 
 if __name__ == '__main__':
-	config = 'servers.config'
+	config = '../data/servers.config'
 	
 	c = client(sys.argv[1], config, '', 1)
 	c.run()

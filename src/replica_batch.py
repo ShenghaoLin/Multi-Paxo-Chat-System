@@ -1,7 +1,7 @@
 from replica import *
 
 if __name__ == '__main__':
-	config = get_config('servers.config')
+	config = get_config('../data/servers.config')
 	replicas = list()
 	processes = list()
 

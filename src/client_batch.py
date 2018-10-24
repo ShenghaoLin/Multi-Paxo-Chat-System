@@ -1,14 +1,15 @@
 from client import *
 
 if __name__ == '__main__':
-	config = 'servers.config'
+	config = '../data/servers.config'
+	data_path = '../data/'
 	message = ['messages.txt','messages2.txt','messages3.txt']
 
 	clients = list()
 	processes = list()
 	
 	for i in range(3):
-		c = client(str(i), config, message[i], 0)
+		c = client(str(i), config, data_path + message[i], 0)
 		clients.append(c)
 
 

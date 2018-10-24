@@ -52,7 +52,7 @@ class Replica:
 			t.daemon = True
 			t.start()
 
-		filename = "Replica" + str(self.id) + ".log"
+		filename = "../log/Replica" + str(self.id) + ".log"
 		with open(filename, 'w') as f:
 			f.write('')
 		f.close()
@@ -299,7 +299,7 @@ class Replica:
 
 			for ss in self.receive_list:
 				complete_send(ss[0], ss[1], REPLY + self.decide[self.to_execute])
-			filename = "Replica" + str(self.id) + ".log"
+			filename = "../log/Replica" + str(self.id) + ".log"
 			with open(filename, 'a') as f:
 				f.write(str(self.to_execute) + ' ' + self.decide[self.to_execute].replace('-+-', ' ').replace('~~', ' ') + '\n')
 			f.close()
@@ -377,7 +377,6 @@ class Replica:
 			time.sleep(0.2)
 
 if __name__ == '__main__':
-	config = get_config('servers.config')
+	config = get_config('../data/servers.config')
 	r = Replica(int(sys.argv[1]), config, 1)
 	r.start()
-
