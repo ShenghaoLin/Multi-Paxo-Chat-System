@@ -30,8 +30,8 @@ Then,
 Run client in batch mode: python client_batch.py
 Run replica in batch mode: python replica_batch.py
 The consensus system is alive when p is small, for example, p = 0.01
-################################################################################
 
+#
 Run replica seperately: python replica.py $replica_id
 And then there are 3 commands you can use: "Start", "Kill me" and "Skip slot".
 (Plese only use Start command after start all the replicas!)
