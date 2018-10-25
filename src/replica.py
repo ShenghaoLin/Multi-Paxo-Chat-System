@@ -1,3 +1,15 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+""" This module defines the replica class, and executing this module will
+	automatically run a replica in cmdl mode.
+
+	To run this program, always including the first argument as the id of
+	this replica. If a message loss is needed, use the optional second argument.
+
+	@author: Shenghao Lin, Yangming Ke
+"""
+
 import socket
 import time
 import threading
@@ -6,13 +18,18 @@ from multiprocessing import Process
 from replica_utils import *
 
 
-"""
-This class implements the Replica object.
-In its definition, its id (a number as given in the config file),
-config (a list of config tuples), mode (0 for batch mode and 1 for cmdl)
-and optional p (message loss probability) should be provided.
-"""
 class Replica:
+	""" This class implements the Replica object.
+		Thre are 2 modes: cmdl line mode and batch mode.
+		In cmdl line mode, a replica is started, and controlled by cmdl commands
+		In batch mode, replicas are started from one py file, but in different processes
+
+	Parameters:
+		id: a number as given in the config file, representing this replica
+		config: a list of config tuples
+		mode: 0 fir batch mode, 1 for cmdl mode
+		p: message loss probability
+	"""
 	
 	def __init__(self, id, config, mode, p = 0):
 		self.mode = mode
@@ -72,7 +89,6 @@ class Replica:
 		""" Function trying to connect all pre-defined sockets to other replicas
 		"""
 
-		# print("start to connect")
 		for s, server in self.socket_list:
 			try:
 				s.connect(server)
@@ -81,12 +97,11 @@ class Replica:
 			t = threading.Thread(target = self.notificate, args = (s, server,))
 			t.daemon = True
 			t.start()
-		# print("connect finish")
 
 
 	def notificate(self, s, server):
 		""" Thread function usded to generate heartbeat to other replicas to
-		notify them that this replica is still alive.
+			notify them that this replica is still alive.
 
 		Arguments:
 			s: socket connecting to the target replica
@@ -101,11 +116,17 @@ class Replica:
 			complete_send(s, server, NOTIFICATION + str(self.id), p = self.p)
 			time.sleep(0.1)
 		
+	def commit_suicide(self):
+		""" Function called to kill this replica
+		"""
+
+		self.suicide = True
 
 	def new_connection(self):
 		""" Thread function used to keep track of all new connections to this replica
-		and build new threads to receive messages from them.
+			and build new threads to receive messages from them.
 		"""
+		
 		while True:
 
 			if self.suicide:
@@ -122,7 +143,7 @@ class Replica:
 
 	def receive(self, s):
 		""" Thread function to handle all receiving messages, which is the 
-		most import function in this class.
+			most import function in this class.
 
 		Arguments:
 			s: socket of receiving data
@@ -292,7 +313,7 @@ class Replica:
 
 
 	def start(self):
-		"""The main function run in the process of this replica
+		""" The main function run in the process of this replica
 		"""
 
 		self.last_decide_time = time.time()
@@ -396,7 +417,7 @@ class Replica:
 
 	def repeat_propose(self, slot, msg):
 		""" Called in message loss case, so that we can make sure at least one decision is made, which is in the leader, so that
-		the clients may not be block forever. When the loss is not very heavy, a leader switch can repair other replicas
+			the clients may not be block forever. When the loss is not very heavy, a leader switch can repair other replicas
 
 		Arguments:
 			slot: the slot we want to get a decision
@@ -508,5 +529,8 @@ class Replica:
 
 if __name__ == '__main__':
 	config = get_config('../data/servers.config')
-	r = Replica(int(sys.argv[1]), config, 1)
+	prob = 0
+	if (len(sys.argv) > 2):
+		prob = float(sys.argv[2])
+	r = Replica(int(sys.argv[1]), config, 1, p = prob)
 	r.start()
