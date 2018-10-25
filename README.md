@@ -3,12 +3,18 @@
 # How to Use
 
 Terminal commands:
+
 python replica_batch.py $kill_number [$message_loss_prob]
+
 python replica.py $replica_id [$message_loss_prob]
+
 python client_batch.py [$message_loss_prob]
+
 python client.py $client_name [$message_loss_prob]
 
+
 Commands in replica cmdl mode:
+
 start; kill me; skip slot; 
 
 
