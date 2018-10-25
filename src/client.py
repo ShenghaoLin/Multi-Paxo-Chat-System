@@ -33,7 +33,8 @@ class client():
 
 			if msg != '':
 				if msg[0] == REPLY:
-					m = msg[1:]
+					leader = msg[1:].split(' ')[0]
+					m = msg[1:].split(' ')[1]
 					if m == NULL_ACTION:
 						continue
 
@@ -41,6 +42,7 @@ class client():
 
 					self.lock.acquire()
 					if hash_code not in self.chat_hist_code:
+						self.view = int(leader)
 						real_msg = m.split('~`')[2].replace('-+-', ' ')
 						self.chat_hist_code.append(hash_code)
 						self.chat_history += (hash_code + ': ' + real_msg + '\n')

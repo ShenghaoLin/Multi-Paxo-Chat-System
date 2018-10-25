@@ -5,8 +5,12 @@ if __name__ == '__main__':
 	replicas = list()
 	processes = list()
 
+	prob = 0
+	if len(sys.argv) > 1:
+		prob = float(sys.argv[1])
+
 	for i in range(len(config)):
-		replicas.append(Replica(i, config, 0, p = 0))
+		replicas.append(Replica(i, config, 0, p = prob))
 
 	for i in range(len(config)):
 		p = Process(target = replicas[i].start)
@@ -22,8 +26,8 @@ if __name__ == '__main__':
 	processes[0].terminate()
 	time.sleep(2)
 	processes[1].terminate()
-	time.sleep(2)
-	processes[2].terminate()
+	# time.sleep(2)
+	# processes[2].terminate()
 
 	# t = threading.Timer(120.0, kill_all, args = (processes,))
 	# t.start()

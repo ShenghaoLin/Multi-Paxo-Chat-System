@@ -19,7 +19,7 @@ class Replica:
 		self.state = 0
 		self.view = 0
 		self.current_leader = -1
-		self.approve = 0
+		self.approve = set()
 		self.to_propose = dict()
 		self.proposed_pairs = dict()
 		self.to_dicide = dict()
@@ -34,10 +34,12 @@ class Replica:
 		self.ready_to_connect = False
 		self.console_input = list()
 		self.skip_slot = False
+		self.to_dicide_list = dict()
 		self.send_request = 0
 		self.met = set()
 		self.suicide_after = -1
 		self.suicide = False
+		self.decided_until = -1
 
 		for server in self.config:
 			s = socket.socket()
@@ -78,7 +80,7 @@ class Replica:
 				return
 
 			complete_send(s, server, NOTIFICATION + str(self.id), p = self.p)
-			time.sleep(0.5)
+			time.sleep(0.1)
 		
 	def new_connection(self):
 		while True:
@@ -129,10 +131,14 @@ class Replica:
 						continue
 
 					self.lock.acquire()
-					self.approve += 1
+					self.approve.add(int(msg[1:].split()[0]))
 					self.lock.release()
 
-					proposed = msg.split()
+
+
+					proposed = msg[1:].split()[1:]
+					self.slot_to_propose = min(self.slot_to_propose, int(proposed[0]) + 1)
+
 					for i in range(int((len(proposed) - 1) / 3)):
 
 						self.lock.acquire()
@@ -146,8 +152,9 @@ class Replica:
 
 					self.lock.acquire()
 					
-					if self.approve > len(self.config) / 2 and self.state == 1:
+					if len(self.approve) > len(self.config) / 2 and self.state == 1:
 						self.state = 2
+						print(str(self.id) + ' becomes leader')
 					self.lock.release()
 
 
@@ -155,9 +162,9 @@ class Replica:
 					print(str(self.id) + " receive request from " + msg[1:])
 					self.lock.acquire()
 
-					if int(msg[1:]) > self.current_leader:
+					if int(msg[1:]) >= self.current_leader or (self.current_leader == len(self.config) - 1):
 						k = int(msg[1:])
-						to_send = LEADER_APPROVE
+						to_send = LEADER_APPROVE + str(self.id) + ' ' + str(self.decided_until)
 						if self.state == 2:
 							self.state = 0
 
@@ -177,8 +184,8 @@ class Replica:
 
 					p = msg.split()
 
-					if int(p[1]) >= self.current_leader:
-						if self.state == 2 and int(p[1]) > self.id:
+					if int(p[1]) >= self.current_leader or int(p[1]) == len(self.config) - 1:
+						if self.state == 2 and (int(p[1]) > self.id or (int(p[1]) == len(self.config) - 1 and int(p[1]) != self.id)):
 							self.state = 0
 						self.proposed_pairs[int(p[2])] = (int(p[1]), p[3])
 						if (p[3] != NULL_ACTION):
@@ -189,7 +196,7 @@ class Replica:
 							self.msg_queue.remove(p[3])
 						for ss in self.socket_list:
 							self.lock.acquire()
-							complete_send(ss[0], ss[1], ACCEPT + ' ' + p[2] + ' ' + p[3], p = self.p)
+							complete_send(ss[0], ss[1], ACCEPT + ' ' + p[2] + ' ' + p[3] + ' ' + str(self.id), p = self.p)
 							self.lock.release()
 
 				elif msg[0] == ACCEPT:
@@ -201,11 +208,21 @@ class Replica:
 
 					if int(m[1]) not in self.to_dicide:
 						self.to_dicide[int(m[1])] = dict()
+						self.to_dicide_list[int(m[1])] = dict()
 
-					if m[2] in self.to_dicide[int(m[1])]:
-						self.to_dicide[int(m[1])][m[2]] += 1
-					else:
-						self.to_dicide[int(m[1])][m[2]] = 1
+					if int(m[3]) not in self.to_dicide_list[int(m[1])]:
+						self.to_dicide_list[int(m[1])][int(m[3])] = m[2]
+						try:
+							self.to_dicide[int(m[1])][m[2]] += 1
+						except:
+							self.to_dicide[int(m[1])][m[2]] = 1
+					elif m[2] != self.to_dicide_list[int(m[1])][int(m[3])]:
+						self.to_dicide[int(m[1])][self.to_dicide_list[int(m[1])][int(m[3])]] -= 1
+						try:
+							self.to_dicide[int(m[1])][m[2]] += 1
+						except:
+							self.to_dicide[int(m[1])][m[2]] = 1
+
 
 					print(str(self.id) + " receive accept: " + msg[1:].replace('-+-', ' ').replace('~`', ' '))
 
@@ -265,11 +282,6 @@ class Replica:
 			
 			time.sleep(0.1)
 
-			# if time.time() - self.last_decide_time > 30:
-			# 	self.socket.close()
-			# 	print('No new deciesions made recently, disconnect ' + str(self.id))
-			# 	break
-		# os.kill(os.getpid(), signal.SIGINT)
 
 	def check_decision(self):
 		for slot in self.to_dicide:
@@ -280,10 +292,15 @@ class Replica:
 					print(str(self.id) + " decided: " + m.replace('-+-', ' ').replace('~`', ' ') + ' at slot ' + str(slot))
 					if slot in self.proposed_pairs:
 						del(self.proposed_pairs[slot])
+					tmp = self.decided_until
+					while tmp + 1 in self.decided:
+						tmp += 1
+					self.decided_until = tmp
+
 				self.last_decide_time = time.time()
 
 				if slot == self.suicide_after:
-					print("I skipped a slot, so I have to go some time.")
+					print("I skipped a slot, remember to kill me later.")
 					# self.suicide = True
 					self.suicide_after = -1
 				
@@ -293,13 +310,20 @@ class Replica:
 		if self.to_execute in self.decided:
 
 			for ss in self.receive_list:
-				complete_send(ss[0], ss[1], REPLY + self.decide[self.to_execute])
+				complete_send(ss[0], ss[1], REPLY + str(self.current_leader) + ' ' + self.decide[self.to_execute])
 			filename = "../log/Replica" + str(self.id) + ".log"
 			with open(filename, 'a') as f:
 				f.write(str(self.to_execute) + ' ' + self.decide[self.to_execute].replace('-+-', ' ').replace('~~', ' ') + '\n')
 			f.close()
 
 			self.to_execute += 1
+
+	def repeat_propose(self, slot, msg):
+		while self.state == 2 and slot not in self.decided:
+			time.sleep(3)
+			if slot not in self.decided:
+				for ss in self.socket_list:
+					complete_send(ss[0], ss[1], msg, p = self.p)
 			
 			
 	def timeout_check(self):
@@ -314,6 +338,8 @@ class Replica:
 			self.lock.release()
 
 			if self.id == self.view and self.state == 0:
+				self.approve = set()
+				self.slot_to_propose = self.decided_until + 1
 				self.state = 1
 				self.send_request = time.time()
 				print(str(self.id) + " send request")
@@ -323,7 +349,7 @@ class Replica:
 					complete_send(ss[0], ss[1], LEADER_REQ + str(self.id), p = self.p)
 					self.lock.release()
 
-			if self.state == 1 and time.time() - self.send_request> 5:
+			if self.state == 1 and time.time() - self.send_request > 5:
 
 				self.send_request = time.time()
 				print(str(self.id) + " send request")
@@ -334,8 +360,8 @@ class Replica:
 					self.lock.release()
 
 			if self.state == 2:
-				while self.slot_to_propose in self.decided:
-					self.slot_to_propose += 1
+				# while self.slot_to_propose in self.decided:
+				# 	self.slot_to_propose += 1
 
 				if self.skip_slot:
 					self.slot_to_propose += 1
@@ -346,6 +372,13 @@ class Replica:
 					print(str(self.id) + ' send propose by prev ' + self.to_propose[i][1].replace('-+-', ' ').replace('~`', ' '))
 					for ss in self.socket_list:
 						complete_send(ss[0], ss[1], PROPOSE + ' ' + str(self.id) + ' ' + str(self.slot_to_propose) + ' ' + self.to_propose[i][1], p = self.p)
+						t = threading.Thread(target = self.repeat_propose, args = (self.slot_to_propose, PROPOSE + ' ' + str(self.id) + ' ' + str(self.slot_to_propose) + ' ' + self.to_propose[i][1], ))
+						t.daemon = True
+						t.start()
+					
+
+					self.slot_to_propose += 1
+
 				else:
 
 					if (len(self.to_propose) > 0 and self.slot_to_propose < max([x for x in self.to_propose])) \
@@ -353,6 +386,12 @@ class Replica:
 						print(str(self.id) + ' send propose ' + NULL_ACTION)
 						for ss in self.socket_list:
 							complete_send(ss[0], ss[1], PROPOSE + ' ' + str(self.id) + ' ' + str(self.slot_to_propose) + ' ' + NULL_ACTION, p = self.p)
+							t = threading.Thread(target = self.repeat_propose, args = (self.slot_to_propose, PROPOSE + ' ' + str(self.id) + ' ' + str(self.slot_to_propose) + ' ' + NULL_ACTION, ))
+							t.daemon = True
+							t.start()
+						self.slot_to_propose += 1
+
+
 				
 					elif len(self.msg_queue) > 0:
 						
@@ -367,7 +406,14 @@ class Replica:
 						print(str(self.id) + ' send propose by myself ' + to_propose_s.replace('-+-', ' ').replace('~`', ' '))
 						for ss in self.socket_list:
 							complete_send(ss[0], ss[1], PROPOSE + ' ' + str(self.id) + ' ' + str(self.slot_to_propose) + ' ' + to_propose_s, p = self.p)
+							
+							t = threading.Thread(target = self.repeat_propose, args = (self.slot_to_propose, PROPOSE + ' ' + str(self.id) + ' ' + str(self.slot_to_propose) + ' ' + to_propose_s, ))
+							t.daemon = True
+							t.start()
+
+						self.slot_to_propose += 1
 				
+
 
 			time.sleep(0.2)
 

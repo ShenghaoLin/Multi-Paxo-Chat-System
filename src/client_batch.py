@@ -7,9 +7,13 @@ if __name__ == '__main__':
 
 	clients = list()
 	processes = list()
+
+	prob = 0
+	if len(sys.argv) > 1:
+		prob = float(sys.argv[1])
 	
 	for i in range(3):
-		c = client(str(i), config, data_path + message[i], 0, p = 0)
+		c = client(str(i), config, data_path + message[i], 0, p = prob)
 		clients.append(c)
 
 
