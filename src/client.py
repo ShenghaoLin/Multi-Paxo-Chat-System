@@ -106,7 +106,6 @@ class client():
 	def send_msg(self, m, sockets):
 		self.sending = True
 		while self.sending:
-			# print(self.view)
 			s = sockets[self.view]
 			complete_send(s[0], s[1], MESSAGE + self.name + '~`' + str(self.msg_sent) + '~`' + m.replace(' ', '-+-'), p = self.p)
 			for tt in range(10):

@@ -10,6 +10,7 @@ class Replica:
 	def __init__(self, id, config, mode, p = 0):
 		self.mode = mode
 		self.id = id
+		self.already_proposed = set()
 		self.socket = socket.socket()
 		self.socket.bind(config[id])
 		self.lock = threading.Lock()
@@ -56,9 +57,6 @@ class Replica:
 		with open(filename, 'w') as f:
 			f.write('')
 		f.close()
-
-		self.msg_proposed = set()
-		self.received = set()
 
 	def connect(self):
 		# print("start to connect")
@@ -108,7 +106,6 @@ class Replica:
 					if int(msg[1:]) == self.view:
 						self.time_stamp = time.time()
 						if int(msg[1:]) not in self.met:
-							# print("receive from " + msg[1:])
 							try:
 								self.socket_list[int(msg[1:])][0].connect(self.socket_list[int(msg[1:])][1])
 							except:
@@ -117,20 +114,20 @@ class Replica:
 
 
 				elif msg[0] == MESSAGE:
+					if self.state != 2:
+						continue
 					m = msg[1:]
 					hash_code = hash_it(m)
-					if (hash_code not in self.received) and (hash_code not in self.msg_proposed):
-						
+					if m not in [self.decide[x] for x in self.decide] and m not in self.msg_queue:
 						self.msg_queue.append(m)
-						self.received.add(hash_code)
 
 				elif msg[0] == LEADER_APPROVE:
-					print(str(self.id) + " receive approve")
-					
+										
 					if self.state != 1:
 						continue
 
 					self.lock.acquire()
+					print(str(self.id) + ' receive approve from ' + msg[1:].split()[0] + ' ' + str(len(self.approve)))
 					self.approve.add(int(msg[1:].split()[0]))
 					self.lock.release()
 
@@ -141,17 +138,14 @@ class Replica:
 
 					for i in range(int((len(proposed) - 1) / 3)):
 
-						self.lock.acquire()
-						if int(proposed[3 * i + 1]) in self.decided:
-							continue
 						if int(proposed[3 * i + 1]) in self.to_propose:
 							if int(proposed[3 * i + 2]) > self.to_propose[int(proposed[3 * i + 1])][0]:
 								self.to_propose[int(proposed[3 * i + 1])] = (int(proposed[3 * i + 2]), proposed[3 * i + 3])
-						self.lock.release()
-
+						else:
+							self.to_propose[int(proposed[3 * i + 1])] = (int(proposed[3 * i + 2]), proposed[3 * i + 3])
+						
 
 					self.lock.acquire()
-					
 					if len(self.approve) > len(self.config) / 2 and self.state == 1:
 						self.state = 2
 						print(str(self.id) + ' becomes leader')
@@ -160,11 +154,13 @@ class Replica:
 
 				elif msg[0] == LEADER_REQ:
 					print(str(self.id) + " receive request from " + msg[1:])
-					self.lock.acquire()
+					
 
 					if int(msg[1:]) >= self.current_leader or (self.current_leader == len(self.config) - 1):
+
 						k = int(msg[1:])
 						to_send = LEADER_APPROVE + str(self.id) + ' ' + str(self.decided_until)
+
 						if self.state == 2:
 							self.state = 0
 
@@ -177,7 +173,6 @@ class Replica:
 
 						self.current_leader = k
 						self.view = k
-					self.lock.release()
 
 				elif msg[0] == PROPOSE:
 					print(str(self.id) + " receive propose")
@@ -188,22 +183,16 @@ class Replica:
 						if self.state == 2 and (int(p[1]) > self.id or (int(p[1]) == len(self.config) - 1 and int(p[1]) != self.id)):
 							self.state = 0
 						self.proposed_pairs[int(p[2])] = (int(p[1]), p[3])
-						if (p[3] != NULL_ACTION):
-							hash_code = hash_it(p[3])
-							self.received.add(hash_code)
-							self.msg_proposed.add(hash_code)
+
 						if p[3] in self.msg_queue:
 							self.msg_queue.remove(p[3])
+
 						for ss in self.socket_list:
-							self.lock.acquire()
 							complete_send(ss[0], ss[1], ACCEPT + ' ' + p[2] + ' ' + p[3] + ' ' + str(self.id), p = self.p)
-							self.lock.release()
 
 				elif msg[0] == ACCEPT:
 					m = msg.split()
-					if (m[2] != NULL_ACTION):
-						self.msg_proposed.add(hash_it(m[2]))
-
+					
 					self.lock.acquire()
 
 					if int(m[1]) not in self.to_dicide:
@@ -216,6 +205,7 @@ class Replica:
 							self.to_dicide[int(m[1])][m[2]] += 1
 						except:
 							self.to_dicide[int(m[1])][m[2]] = 1
+
 					elif m[2] != self.to_dicide_list[int(m[1])][int(m[3])]:
 						self.to_dicide[int(m[1])][self.to_dicide_list[int(m[1])][int(m[3])]] -= 1
 						try:
@@ -290,8 +280,6 @@ class Replica:
 					self.decided.add(slot) 
 					self.decide[slot] = m
 					print(str(self.id) + " decided: " + m.replace('-+-', ' ').replace('~`', ' ') + ' at slot ' + str(slot))
-					if slot in self.proposed_pairs:
-						del(self.proposed_pairs[slot])
 					tmp = self.decided_until
 					while tmp + 1 in self.decided:
 						tmp += 1
@@ -328,14 +316,12 @@ class Replica:
 			
 	def timeout_check(self):
 		while True:
-			if self.suicide:
-				return
 
-			self.lock.acquire()
 			if time.time() - self.time_stamp >= 1.5 and self.id != self.view:
+				self.lock.acquire()
 				self.view += 1
+				self.lock.release()
 				self.time_stamp = time.time()
-			self.lock.release()
 
 			if self.id == self.view and self.state == 0:
 				self.approve = set()
@@ -345,37 +331,32 @@ class Replica:
 				print(str(self.id) + " send request")
 
 				for ss in self.socket_list:
-					self.lock.acquire()
 					complete_send(ss[0], ss[1], LEADER_REQ + str(self.id), p = self.p)
-					self.lock.release()
 
 			if self.state == 1 and time.time() - self.send_request > 5:
 
 				self.send_request = time.time()
+				for ss in self.socket_list:
+					complete_send(ss[0], ss[1], LEADER_REQ + str(self.id), p = self.p)
 				print(str(self.id) + " send request")
 
-				for ss in self.socket_list:
-					self.lock.acquire()
-					complete_send(ss[0], ss[1], LEADER_REQ + str(self.id), p = self.p)
-					self.lock.release()
 
 			if self.state == 2:
-				# while self.slot_to_propose in self.decided:
-				# 	self.slot_to_propose += 1
 
 				if self.skip_slot:
 					self.slot_to_propose += 1
 					self.suicide_after = self.slot_to_propose
 					self.skip_slot = False
-
+				# print("???" + str(self.slot_to_propose))
 				if self.slot_to_propose in self.to_propose:
-					print(str(self.id) + ' send propose by prev ' + self.to_propose[i][1].replace('-+-', ' ').replace('~`', ' '))
+					print(str(self.id) + ' send propose by prev ' + self.to_propose[self.slot_to_propose][1].replace('-+-', ' ').replace('~`', ' '))
+					self.already_proposed.add(self.to_propose[self.slot_to_propose][1])
 					for ss in self.socket_list:
-						complete_send(ss[0], ss[1], PROPOSE + ' ' + str(self.id) + ' ' + str(self.slot_to_propose) + ' ' + self.to_propose[i][1], p = self.p)
-						t = threading.Thread(target = self.repeat_propose, args = (self.slot_to_propose, PROPOSE + ' ' + str(self.id) + ' ' + str(self.slot_to_propose) + ' ' + self.to_propose[i][1], ))
-						t.daemon = True
-						t.start()
+						complete_send(ss[0], ss[1], PROPOSE + ' ' + str(self.id) + ' ' + str(self.slot_to_propose) + ' ' + self.to_propose[self.slot_to_propose][1], p = self.p)
 					
+					t = threading.Thread(target = self.repeat_propose, args = (self.slot_to_propose, PROPOSE + ' ' + str(self.id) + ' ' + str(self.slot_to_propose) + ' ' + self.to_propose[self.slot_to_propose][1], ))
+					t.daemon = True
+					t.start()
 
 					self.slot_to_propose += 1
 
@@ -386,16 +367,17 @@ class Replica:
 						print(str(self.id) + ' send propose ' + NULL_ACTION)
 						for ss in self.socket_list:
 							complete_send(ss[0], ss[1], PROPOSE + ' ' + str(self.id) + ' ' + str(self.slot_to_propose) + ' ' + NULL_ACTION, p = self.p)
-							t = threading.Thread(target = self.repeat_propose, args = (self.slot_to_propose, PROPOSE + ' ' + str(self.id) + ' ' + str(self.slot_to_propose) + ' ' + NULL_ACTION, ))
-							t.daemon = True
-							t.start()
+						t = threading.Thread(target = self.repeat_propose, args = (self.slot_to_propose, PROPOSE + ' ' + str(self.id) + ' ' + str(self.slot_to_propose) + ' ' + NULL_ACTION, ))
+						t.daemon = True
+						t.start()
 						self.slot_to_propose += 1
 
 
 				
 					elif len(self.msg_queue) > 0:
 						
-						while (len(self.msg_queue) > 0) and (hash_it(self.msg_queue[0]) in self.msg_proposed):
+						while (len(self.msg_queue) > 0) and \
+						(self.msg_queue[0] in [self.decide[x] for x in self.decide] or self.msg_queue[0] in self.already_proposed):
 							self.msg_queue.pop(0)
 
 						if len(self.msg_queue) == 0:
@@ -404,16 +386,16 @@ class Replica:
 						to_propose_s = self.msg_queue.pop(0)
 
 						print(str(self.id) + ' send propose by myself ' + to_propose_s.replace('-+-', ' ').replace('~`', ' '))
+						self.already_proposed.add(to_propose_s)
+						
 						for ss in self.socket_list:
 							complete_send(ss[0], ss[1], PROPOSE + ' ' + str(self.id) + ' ' + str(self.slot_to_propose) + ' ' + to_propose_s, p = self.p)
-							
-							t = threading.Thread(target = self.repeat_propose, args = (self.slot_to_propose, PROPOSE + ' ' + str(self.id) + ' ' + str(self.slot_to_propose) + ' ' + to_propose_s, ))
-							t.daemon = True
-							t.start()
+
+						t = threading.Thread(target = self.repeat_propose, args = (self.slot_to_propose, PROPOSE + ' ' + str(self.id) + ' ' + str(self.slot_to_propose) + ' ' + to_propose_s, ))
+						t.daemon = True
+						t.start()
 
 						self.slot_to_propose += 1
-				
-
 
 			time.sleep(0.2)
 
