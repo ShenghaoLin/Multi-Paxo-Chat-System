@@ -33,7 +33,8 @@ For replica 0, run command "Kill me"
 
 See log files for results.
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%Batch mode test%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%Batch mode test%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 Run replica in batch mode: python replica_batch.py $kill_number, where $kill_number is 1
 
 Run client in batch mode: python client_batch.py
