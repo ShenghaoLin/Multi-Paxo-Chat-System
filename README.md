@@ -13,9 +13,7 @@ python client_batch.py [$message_loss_prob]
 python client.py $client_name [$message_loss_prob]
 
 
-Commands in replica cmdl mode:
-
-start; kill me; skip slot; 
+Commands in replica cmdl mode: start; kill me; skip slot; 
 
 
 Config file: servers.config, add more servers as you like
