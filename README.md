@@ -16,6 +16,7 @@ python client.py $client_name [$message_loss_prob]
 Commands in replica cmdl mode: start; kill me; skip slot; 
 
 
+
 Config file: servers.config, add more servers as you like
 
 client message files: messages.txt, messages2.txt, messages3.txt. 
