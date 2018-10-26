@@ -19,9 +19,9 @@ start; kill me; skip slot;
 
 
 # Run test case 1: batch mode
-Run client in batch mode: python replica_batch.py $kill_number [$message_loss_prob], where $kill_number is the number of primaries to kill during running, and $message_loss_prob is optional.
+Run replica in batch mode: python replica_batch.py $kill_number [$message_loss_prob], where $kill_number is the number of primaries to kill during running, and $message_loss_prob is optional.
 
-Run replica in batch mode: python client_batch.py [$message_loss_prob], as defined above.
+Run client in batch mode: python client_batch.py [$message_loss_prob], as defined above.
 
 # Run test case 2: primary dies
 
@@ -33,8 +33,10 @@ For replica 0, run command "Kill me"
 
 See log files for results.
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%Batch mode test%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+Run replica in batch mode: python replica_batch.py $kill_number, where $kill_number is 1
 
+Run client in batch mode: python client_batch.py
 
 # Run test case 3: primary dies, view change
 Run 2f+1 replicas separately first: python replica.py $replica_id , where $replica_id is integers for processor ids.
