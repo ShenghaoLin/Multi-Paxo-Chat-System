@@ -219,5 +219,5 @@ if __name__ == '__main__':
 	prob = 0
 	if (len(sys.argv) > 2):
 		prob = float(sys.argv[2])
-	c = Client(sys.argv[1], config, '', 1)
+	c = Client(sys.argv[1], config, '', 1, p = prob)
 	c.run()
